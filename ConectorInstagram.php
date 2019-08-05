@@ -17,27 +17,11 @@ use InstagramAPI\Response\Model\DirectThreadItem;
  * # mark item 456 in thread 123 as seen
  * $ curl -i 'http://127.0.0.1:1307/seen?threadId=123&threadItemId=456'
  * # send typing notification to thread 123
- * $ curl -i 'http://127.0.0.1:1307/activity?threadId=123&flag=1'
  * # send some message to thread 123
  * $ curl -i 'http://127.0.0.1:1307/message?threadId=123&text=Hi!'
  * # share post 456_789 to thread 123
- * $ curl -i 'http://127.0.0.1:1307/post?threadId=123&mediaId=456_789&text=This+is+a+really+good+post!'
- * # share story 456_789 to thread 123
- * $ curl -i 'http://127.0.0.1:1307/story?threadId=123&storyId=456_789&text=This+is+a+really+good+story!'
- * # share profile 456789 to thread 123
- * $ curl -i 'http://127.0.0.1:1307/profile?threadId=123&userId=456789&text=Take+a+look+at+their+posts!'
- * # send location 456789 to thread 123
- * $ curl -i 'http://127.0.0.1:1307/location?threadId=123&locationId=456789&text=I+want+to+go+there!'
- * # send hashtag #somehashtag to thread 123
- * $ curl -i 'http://127.0.0.1:1307/hashtag?threadId=123&hashtag=somehashtag&text=It+went+viral!'
- * # like item 456 from thread 123
- * $ curl -i 'http://127.0.0.1:1307/likeItem?threadId=123&threadItemId=456'
- * # unlike item 456 from thread 123
- * $ curl -i 'http://127.0.0.1:1307/unlikeItem?threadId=123&threadItemId=456'
- * # send like to thread 123
- * $ curl -i 'http://127.0.0.1:1307/like?threadId=123'
- * # remove typing notification from thread 123
- * $ curl -i 'http://127.0.0.1:1307/activity?threadId=123&flag=0'
+ * # get profile information for userId 123
+ * $ curl -i 'http://127.0.0.1:1307/getProfile?userId=123'
  * # ping realtime http server
  * $ curl -i 'http://127.0.0.1:1307/ping'
  * # stop realtime http server
@@ -56,8 +40,8 @@ try {
     $username = $argv[1];
     $password = $argv[2];
     $urlNotif = $argv[3];
-    $debug = false;
-    $truncatedDebug = false;
+    $debug = true;
+    $truncatedDebug = true;
     //////////////////////
     
     $ig = new \InstagramAPI\Instagram($debug, $truncatedDebug);
@@ -134,7 +118,6 @@ class ConectorInstagram
         $this->_logger = $logger;
         $this->_contexts = [];
         $this->_rtc = new \InstagramAPI\Realtime($this->_instagram, $this->_loop, $this->_logger);
-        $this->_rtc->on('client-context-ack', [$this, 'onClientContextAck']);
         $this->_rtc->on('error', [$this, 'onRealtimeFail']);
         $this->_rtc->on('thread-item-created', [$this, 'onMessage']);
         $this->_rtc->start();
@@ -174,19 +157,6 @@ class ConectorInstagram
     
     public function onMessage($threadId, $threadItemId, DirectThreadItem $msgData){
         try {
-            //         echo "Parametro: ";
-            //         var_dump($threadId);
-            //         echo "\nParametro2: ";
-            //         var_dump($threadItemId);
-            //         echo "\nParametro3: ";
-            //         var_dump($msgData);
-            //         echo "\n";
-            //         echo $msgData->getText()."\n";
-            //         $perfil = $msgData->getProfile();
-            //         var_dump($perfil);
-            //         //$parametro3->printPropertyDescriptions();
-            
-            echo "///////////////////////////////////////////////////////////\n";
             $res = [];
             $res['threadId'] =  $threadId;
             $res['threadItemId'] = $threadItemId;
@@ -197,6 +167,12 @@ class ConectorInstagram
                 case 'text':
                     $res['type'] = 'text';
                     $res['text'] = $msgData->getText();
+                    break;
+                case 'link':
+                    $res['type'] = 'url';
+                    $res['text'] = $msgData->getLink()->getText();
+                    $res['title'] = $msgData->getLink()->getLinkContext()->getLinkTitle();
+                    $res['summary'] = $msgData->getLink()->getLinkContext()->getLinkSummary();
                     break;
                 case 'like':
                     $res['type'] = 'text';
@@ -233,7 +209,7 @@ class ConectorInstagram
                     break;
                 default: 
                     $res['type'] = 'error';
-                    $res['text'] = 'ATENCION:\nError a recibir mensaje. Revíselo en su cuenta de Instagram o consulte a soporte@todoalojamiento.com';
+                    $res['text'] = 'ATENCION:\nMensaje de clase desconocida. Revíselo en su cuenta de Instagram o consulte a soporte@todoalojamiento.com';
             }
             $strJson = json_encode($res);
             $this->_logger->info($strJson);
@@ -246,7 +222,6 @@ class ConectorInstagram
             $strJson = json_encode($res);
             $this->_logger->info($strJson);
             $this->callCURL($strJson);
-            //TODO: enviar msj no reconocido por curl
             $this->_logger->error((string) $e);
         }
         
@@ -275,28 +250,6 @@ class ConectorInstagram
     {
         $this->_logger->error((string) $e);
         $this->_stop();
-    }
-
-    /**
-     * Called when ACK has been received.
-     *
-     * @param \InstagramAPI\Realtime\Payload\Action\AckAction $ack
-     */
-    public function onClientContextAck(
-        \InstagramAPI\Realtime\Payload\Action\AckAction $ack)
-    {
-        $context = $ack->getPayload()->getClientContext();
-        $this->_logger->info(sprintf('Received ACK for %s with status %s', $context, $ack->getStatus()));
-        $this->_logger->info('ENTRO ACAAAAA');
-        // Check if we have deferred object for this client_context.
-        if (!isset($this->_contexts[$context])) {
-            return;
-        }
-        // Resolve deferred object with $ack.
-        $deferred = $this->_contexts[$context];
-        $deferred->resolve($ack);
-        // Clean up.
-        unset($this->_contexts[$context]);
     }
 
     /**
@@ -354,42 +307,12 @@ class ConectorInstagram
                 return new \React\Http\Response(200, [], 'pong');
             case '/stop':
                 $this->_stop();
-
                 return new \React\Http\Response(200);
             case '/seen':
                 $context = $this->_rtc->markDirectItemSeen($params['threadId'], $params['threadItemId']);
-
                 return new \React\Http\Response($context !== false ? 200 : 503);
-            case '/activity':
-                return $this->_handleClientContext($this->_rtc->indicateActivityInDirectThread($params['threadId'], (bool) $params['flag']));
             case '/message':
                 return $this->_handleClientContext($this->_rtc->sendTextToDirect($params['threadId'], $params['text']));
-            case '/post':
-                return $this->_handleClientContext($this->_rtc->sendPostToDirect($params['threadId'], $params['mediaId'], [
-                    'text' => isset($params['text']) ? $params['text'] : null,
-                ]));
-            case '/story':
-                return $this->_handleClientContext($this->_rtc->sendStoryToDirect($params['threadId'], $params['storyId'], [
-                    'text' => isset($params['text']) ? $params['text'] : null,
-                ]));
-            case '/profile':
-                return $this->_handleClientContext($this->_rtc->sendProfileToDirect($params['threadId'], $params['userId'], [
-                    'text' => isset($params['text']) ? $params['text'] : null,
-                ]));
-            case '/location':
-                return $this->_handleClientContext($this->_rtc->sendLocationToDirect($params['threadId'], $params['locationId'], [
-                    'text' => isset($params['text']) ? $params['text'] : null,
-                ]));
-            case '/hashtag':
-                return $this->_handleClientContext($this->_rtc->sendHashtagToDirect($params['threadId'], $params['hashtag'], [
-                    'text' => isset($params['text']) ? $params['text'] : null,
-                ]));
-            case '/like':
-                return $this->_handleClientContext($this->_rtc->sendLikeToDirect($params['threadId']));
-            case '/likeItem':
-                return $this->_handleClientContext($this->_rtc->sendReactionToDirect($params['threadId'], $params['threadItemId'], 'like'));
-            case '/unlikeItem':
-                return $this->_handleClientContext($this->_rtc->deleteReactionFromDirect($params['threadId'], $params['threadItemId'], 'like'));
             case '/getProfile':
                 return new \React\Http\Response(200, [], $this->getProfileData($params['userId']));
             default:
