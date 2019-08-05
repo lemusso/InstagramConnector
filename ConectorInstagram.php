@@ -49,16 +49,19 @@ date_default_timezone_set('UTC');
 
 require __DIR__.'/vendor/autoload.php';
 
-/////// CONFIG ///////
-$username = 'de.jefe';
-$password = 'cacacun';
-$debug = true;
-$truncatedDebug = false;
-//////////////////////
-
-$ig = new \InstagramAPI\Instagram($debug, $truncatedDebug);
 
 try {
+        
+    /////// CONFIG ///////
+    $username = $argv[1];
+    $password = $argv[2];
+    $urlNotif = $argv[3];
+    $debug = false;
+    $truncatedDebug = false;
+    //////////////////////
+    
+    $ig = new \InstagramAPI\Instagram($debug, $truncatedDebug);
+    
     $ig->login($username, $password);
 } catch (\Exception $e) {
     echo 'Something went wrong: '.$e->getMessage()."\n";
@@ -74,7 +77,7 @@ if ($debug) {
     $logger = null;
 }
 // Create HTTP server along with Realtime client.
-$httpServer = new ConectorInstagram($loop, $ig, $logger);
+$httpServer = new ConectorInstagram($loop, $ig, $logger,$urlNotif);
 // Run main loop.
 $loop->run();
 
@@ -102,6 +105,8 @@ class ConectorInstagram
 
     /** @var \Psr\Log\LoggerInterface */
     protected $_logger;
+    
+    protected $_urlNotif;
 
     /**
      * Constructor.
@@ -113,13 +118,15 @@ class ConectorInstagram
     public function __construct(
         \React\EventLoop\LoopInterface $loop,
         \InstagramAPI\Instagram $instagram,
-        \Psr\Log\LoggerInterface $logger = null)
+        \Psr\Log\LoggerInterface $logger = null,
+        string $urlNotif)
     {
         $this->_loop = $loop;
         $this->_instagram = $instagram;
         if ($logger === null) {
             $logger = new \Psr\Log\NullLogger();
         }
+        $this->_urlNotif = $urlNotif;
               
 //         $response = $instagram->people->getInfoById(3983485837);
 //         echo $response->getUser()->getUsername();
@@ -148,32 +155,115 @@ class ConectorInstagram
         });
     }
     
-    public function onMessage($parametro = null, $parametro2 = null, DirectThreadItem $parametro3 = null){
+    private function callCURL($post){
         
-        echo "Parametro: ";
-        var_dump($parametro);
-        echo "\nParametro2: ";
-        var_dump($parametro2);
-        echo "\nParametro3: ";
-        var_dump($parametro3);
-        echo "\n";
-        echo $parametro3->getText()."\n";
-        $perfil = $parametro3->getProfile();
-        var_dump($perfil);
-        //$parametro3->printPropertyDescriptions();
+        $ch = curl_init($this->_urlNotif);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($post))
+            );
         
+        $result = curl_exec($ch);
+        curl_close($ch);
+        
+        $this->_logger->Info($result);
     }
     
-    public function obtenerDatosPerfil($idUsuario){
-        echo 'LLEGO ACA';
-        $respuesta = [];
-        $info = $this->_instagram->people->getInfoById($idUsuario);
-        $respuesta['idUsuario'] = $idUsuario;
-        $respuesta['$nombreUsuario'] = $info->getUser()->getUsername();
-        $respuesta['nombre'] = $info->getUser()->getFull_name();
+    public function onMessage($threadId, $threadItemId, DirectThreadItem $msgData){
+        try {
+            //         echo "Parametro: ";
+            //         var_dump($threadId);
+            //         echo "\nParametro2: ";
+            //         var_dump($threadItemId);
+            //         echo "\nParametro3: ";
+            //         var_dump($msgData);
+            //         echo "\n";
+            //         echo $msgData->getText()."\n";
+            //         $perfil = $msgData->getProfile();
+            //         var_dump($perfil);
+            //         //$parametro3->printPropertyDescriptions();
+            
+            echo "///////////////////////////////////////////////////////////\n";
+            $res = [];
+            $res['threadId'] =  $threadId;
+            $res['threadItemId'] = $threadItemId;
+            $res['userId'] = $msgData->getUserId();
+            $res['itemTypeInstagram'] = $msgData->getItemType();
+            
+            switch ($msgData->getItemType()){
+                case 'text':
+                    $res['type'] = 'text';
+                    $res['text'] = $msgData->getText();
+                    break;
+                case 'like':
+                    $res['type'] = 'text';
+                    $res['text'] = $msgData->getLike();
+                    break;
+                case 'media':
+                    $res['mediaTypeInstagram'] = $msgData->getMedia()->getMediaType();
+                    if($msgData->getMedia()->getMediaType() == 1){
+                        $res['type'] = 'image';
+                        $res['url'] = $msgData->getMedia()->getImageVersions2()->getCandidates()[0]->getUrl();
+                    }else{
+                        $res['type'] = 'video';
+                        $res['url'] = $msgData->getMedia()->getVideoVersions()[0]->getUrl();
+                    }
+                    break;
+                case 'raven_media':
+                    //lo tengo que llamar de esta manera y no con get porque no lo convierte a objeto
+                    $res['mediaTypeInstagram'] = $msgData->getVisualMedia()['media']['media_type'];
+                    if( $msgData->getVisualMedia()['media']['media_type'] == 1){
+                        $res['type'] = 'image';
+                        $res['url'] = $msgData->getVisualMedia()['media']['image_versions2']['candidates'][0]['url'];
+                    }else{
+                        $res['type'] = 'video';
+                        $res['url'] = $msgData->getVisualMedia()['media']['video_versions'][0]['url'];
+                    }
+                    break;
+                case 'voice_media':
+                    $res['type'] = 'audio';
+                    $res['url'] = $msgData->getVoiceMedia()->getMedia()->getAudio()->getAudioSrc();
+                    break;
+                case 'animated_media':
+                    $res['type'] = 'sticker';
+                    $res['url'] = $msgData->getAnimatedMedia()->getImages()->getFixedHeight()->getUrl();
+                    break;
+                default: 
+                    $res['type'] = 'error';
+                    $res['text'] = 'ATENCION:\nError a recibir mensaje. Revíselo en su cuenta de Instagram o consulte a soporte@todoalojamiento.com';
+            }
+            $strJson = json_encode($res);
+            $this->_logger->info($strJson);
+            $this->callCURL($strJson);
+            
+            
+        } catch (Exception $e) {
+            $res['type'] = 'error';
+            $res['text'] = 'ATENCION:\nError a recibir mensaje. Revíselo en su cuenta de Instagram o consulte a soporte@todoalojamiento.com';
+            $strJson = json_encode($res);
+            $this->_logger->info($strJson);
+            $this->callCURL($strJson);
+            //TODO: enviar msj no reconocido por curl
+            $this->_logger->error((string) $e);
+        }
         
-        return json_encode($respuesta);
+
     }
+    
+    public function getProfileData($userId){
+        echo 'LLEGO ACA';
+        $res = [];
+        $info = $this->_instagram->people->getInfoById($userId);
+        $res['userId'] = $userId;
+        $res['userName'] = $info->getUser()->getUsername();
+        $res['name'] = $info->getUser()->getFull_name();
+        
+        return json_encode($res);
+    }
+   
 
     /**
      * Called when fatal error has been received from Realtime.
@@ -301,7 +391,7 @@ class ConectorInstagram
             case '/unlikeItem':
                 return $this->_handleClientContext($this->_rtc->deleteReactionFromDirect($params['threadId'], $params['threadItemId'], 'like'));
             case '/getProfile':
-                return new \React\Http\Response(200, [], $this->obtenerDatosPerfil($params['userId']));
+                return new \React\Http\Response(200, [], $this->getProfileData($params['userId']));
             default:
                 $this->_logger->warning(sprintf('Unknown command %s', $command), $params);
                 // If command is unknown, reply with 404 Not Found.
