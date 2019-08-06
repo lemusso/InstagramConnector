@@ -532,8 +532,8 @@
             "authors": [
                 {
                     "name": "SteveJobzniak",
-                    "homepage": "https://github.com/SteveJobzniak",
-                    "role": "Developer"
+                    "role": "Developer",
+                    "homepage": "https://github.com/SteveJobzniak"
                 }
             ],
             "description": "Advanced, intelligent & automatic object-oriented JSON containers for PHP.",
@@ -602,13 +602,13 @@
             "authors": [
                 {
                     "name": "mgp25",
-                    "email": "me@mgp25.com",
-                    "role": "Founder"
+                    "role": "Founder",
+                    "email": "me@mgp25.com"
                 },
                 {
                     "name": "SteveJobzniak",
-                    "homepage": "https://github.com/SteveJobzniak",
-                    "role": "Developer"
+                    "role": "Developer",
+                    "homepage": "https://github.com/SteveJobzniak"
                 }
             ],
             "description": "Instagram's private API for PHP",
@@ -1318,7 +1318,7 @@
         },
         {
             "name": "symfony/process",
-            "version": "v3.4.29",
+            "version": "v3.4.30",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/process.git",
