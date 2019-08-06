@@ -3,16 +3,6 @@
 use InstagramAPI\Response\Model\DirectThreadItem;
 
 /*
- * IMPORTANT!
- * You need https://github.com/reactphp/http to run this example:
- * $ composer require react/http "^0.7"
- *
- * Also, https://github.com/Seldaek/monolog is required:
- * $ composer require monolog/monolog
- *
- * Lastly, if you have a 32-bit PHP build, you have to enable the GMP extension:
- * http://php.net/manual/en/book.gmp.php
- *
  * Usage:
  * # mark item 456 in thread 123 as seen
  * $ curl -i 'http://127.0.0.1:1307/seen?threadId=123&threadItemId=456'
@@ -61,11 +51,11 @@ if ($debug) {
     $logger = null;
 }
 // Create HTTP server along with Realtime client.
-$httpServer = new ConectorInstagram($loop, $ig, $logger,$urlNotif);
+new InstagramConnector($loop, $ig, $logger,$urlNotif);
 // Run main loop.
 $loop->run();
 
-class ConectorInstagram
+class InstagramConnector
 {
     const HOST = '127.0.0.1';
     const PORT = 1307;
@@ -111,10 +101,6 @@ class ConectorInstagram
             $logger = new \Psr\Log\NullLogger();
         }
         $this->_urlNotif = $urlNotif;
-              
-//         $response = $instagram->people->getInfoById(3983485837);
-//         echo $response->getUser()->getUsername();
-        
         $this->_logger = $logger;
         $this->_contexts = [];
         $this->_rtc = new \InstagramAPI\Realtime($this->_instagram, $this->_loop, $this->_logger);
@@ -229,7 +215,6 @@ class ConectorInstagram
     }
     
     public function getProfileData($userId){
-        echo 'LLEGO ACA';
         $res = [];
         $info = $this->_instagram->people->getInfoById($userId);
         $res['userId'] = $userId;
