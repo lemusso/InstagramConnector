@@ -57,7 +57,7 @@ $loop->run();
 
 class InstagramConnector
 {
-    const HOST = '127.0.0.1';
+    const HOST = 'localhost';
     
     const TIMEOUT = 5;
 
