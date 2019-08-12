@@ -23,13 +23,13 @@ date_default_timezone_set('UTC');
 
 require __DIR__.'/vendor/autoload.php';
 
-
 try {
         
     /////// CONFIG ///////
     $username = $argv[1];
     $password = $argv[2];
-    $urlNotif = $argv[3];
+    $httpServerport = $argv[3];
+    $urlNotif = $argv[4];
     $debug = true;
     $truncatedDebug = true;
     //////////////////////
@@ -51,15 +51,14 @@ if ($debug) {
     $logger = null;
 }
 // Create HTTP server along with Realtime client.
-new InstagramConnector($loop, $ig, $logger,$urlNotif);
+new InstagramConnector($loop, $ig, $logger,$httpServerport, $urlNotif);
 // Run main loop.
 $loop->run();
 
 class InstagramConnector
 {
     const HOST = '127.0.0.1';
-    const PORT = 1307;
-
+    
     const TIMEOUT = 5;
 
     /** @var \React\Promise\Deferred[] */
@@ -80,6 +79,8 @@ class InstagramConnector
     /** @var \Psr\Log\LoggerInterface */
     protected $_logger;
     
+    protected $_httpServerport;
+    
     protected $_urlNotif;
 
     /**
@@ -88,11 +89,14 @@ class InstagramConnector
      * @param \React\EventLoop\LoopInterface $loop
      * @param \InstagramAPI\Instagram        $instagram
      * @param \Psr\Log\LoggerInterface|null  $logger
+     * @param string $httpServerport
+     * @param string $urlNotif
      */
     public function __construct(
         \React\EventLoop\LoopInterface $loop,
         \InstagramAPI\Instagram $instagram,
         \Psr\Log\LoggerInterface $logger = null,
+        string $httpServerport,
         string $urlNotif)
     {
         $this->_loop = $loop;
@@ -100,6 +104,7 @@ class InstagramConnector
         if ($logger === null) {
             $logger = new \Psr\Log\NullLogger();
         }
+        $this->_httpServerport = $httpServerport;
         $this->_urlNotif = $urlNotif;
         $this->_logger = $logger;
         $this->_contexts = [];
@@ -148,6 +153,7 @@ class InstagramConnector
             $res['threadItemId'] = $threadItemId;
             $res['userId'] = $msgData->getUserId();
             $res['itemTypeInstagram'] = $msgData->getItemType();
+            $res['reciverUsername'] = $this->_instagram->username;
             
             switch ($msgData->getItemType()){
                 case 'text':
@@ -156,7 +162,7 @@ class InstagramConnector
                     break;
                 case 'link':
                     $res['type'] = 'url';
-                    $res['text'] = $msgData->getLink()->getText();
+                    $res['url'] = $msgData->getLink()->getText();
                     $res['title'] = $msgData->getLink()->getLinkContext()->getLinkTitle();
                     $res['summary'] = $msgData->getLink()->getLinkContext()->getLinkSummary();
                     break;
@@ -313,7 +319,7 @@ class InstagramConnector
     protected function _startHttpServer()
     {
         // Create server socket.
-        $socket = new \React\Socket\Server(self::HOST.':'.self::PORT, $this->_loop);
+        $socket = new \React\Socket\Server(self::HOST.':'.$this->_httpServerport, $this->_loop);
         $this->_logger->info(sprintf('Listening on http://%s', $socket->getAddress()));
         // Bind HTTP server on server socket.
         $this->_server = new \React\Http\Server([$this, 'onHttpRequest']);
