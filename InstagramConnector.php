@@ -82,6 +82,8 @@ class InstagramConnector
     protected $_httpServerport;
     
     protected $_urlNotif;
+    
+    private  $_profiles;
 
     /**
      * Constructor.
@@ -99,6 +101,7 @@ class InstagramConnector
         string $httpServerport,
         string $urlNotif)
     {
+        $this->_profiles = [];
         $this->_loop = $loop;
         $this->_instagram = $instagram;
         if ($logger === null) {
@@ -148,12 +151,15 @@ class InstagramConnector
     
     public function onMessage($threadId, $threadItemId, DirectThreadItem $msgData){
         try {
+            $profile = $this->getProfileData($msgData->getUserId());
             $res = [];
             $res['threadId'] =  $threadId;
             $res['threadItemId'] = $threadItemId;
             $res['userId'] = $msgData->getUserId();
             $res['itemTypeInstagram'] = $msgData->getItemType();
             $res['reciverUsername'] = $this->_instagram->username;
+            $res['userName'] = $profile['userName'];
+            $res['name'] = $profile['name'];
             
             switch ($msgData->getItemType()){
                 case 'text':
@@ -203,6 +209,7 @@ class InstagramConnector
                     $res['type'] = 'error';
                     $res['text'] = 'ATENCION:\nMensaje de clase desconocida. Revíselo en su cuenta de Instagram o consulte a soporte@todoalojamiento.com';
             }
+                      
             $strJson = json_encode($res);
             $this->_logger->info($strJson);
             $this->callCURL($strJson);
@@ -220,14 +227,14 @@ class InstagramConnector
 
     }
     
-    public function getProfileData($userId){
-        $res = [];
-        $info = $this->_instagram->people->getInfoById($userId);
-        $res['userId'] = $userId;
-        $res['userName'] = $info->getUser()->getUsername();
-        $res['name'] = $info->getUser()->getFull_name();
-        
-        return json_encode($res);
+    private function getProfileData($userId){
+        if(!isset( $this->_profiles[$userId])){
+            $info = $this->_instagram->people->getInfoById($userId);
+            $this->_profiles[$userId]['userName'] = $info->getUser()->getUsername();
+            $this->_profiles[$userId]['name'] = $info->getUser()->getFull_name();
+        }
+               
+        return $this->_profiles[$userId];
     }
    
 
@@ -304,8 +311,8 @@ class InstagramConnector
                 return new \React\Http\Response($context !== false ? 200 : 503);
             case '/message':
                 return $this->_handleClientContext($this->_rtc->sendTextToDirect($params['threadId'], $params['text']));
-            case '/getProfile':
-                return new \React\Http\Response(200, [], $this->getProfileData($params['userId']));
+//             case '/getProfile':
+//                 return new \React\Http\Response(200, [], $this->getProfileData($params['userId']));
             default:
                 $this->_logger->warning(sprintf('Unknown command %s', $command), $params);
                 // If command is unknown, reply with 404 Not Found.
