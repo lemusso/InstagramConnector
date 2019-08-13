@@ -10,8 +10,6 @@ use InstagramAPI\Response\Model\DirectThreadItem;
  * # send some message to thread 123
  * $ curl -i 'http://127.0.0.1:1307/message?threadId=123&text=Hi!'
  * # share post 456_789 to thread 123
- * # get profile information for userId 123
- * $ curl -i 'http://127.0.0.1:1307/getProfile?userId=123'
  * # ping realtime http server
  * $ curl -i 'http://127.0.0.1:1307/ping'
  * # stop realtime http server
@@ -57,7 +55,7 @@ $loop->run();
 
 class InstagramConnector
 {
-    const HOST = 'localhost';
+    const HOST = '127.0.0.1';
     
     const TIMEOUT = 5;
 
