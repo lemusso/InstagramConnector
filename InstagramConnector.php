@@ -149,7 +149,7 @@ class InstagramConnector
     
     public function onMessage($threadId, $threadItemId, DirectThreadItem $msgData){
         try {
-            var_dump($msgData);
+            //var_dump($msgData);
             $profile = $this->getProfileData($msgData->getUserId());
             $res = [];
             $res['threadId'] =  $threadId;
