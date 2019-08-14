@@ -149,6 +149,7 @@ class InstagramConnector
     
     public function onMessage($threadId, $threadItemId, DirectThreadItem $msgData){
         try {
+            var_dump($msgData);
             $profile = $this->getProfileData($msgData->getUserId());
             $res = [];
             $res['threadId'] =  $threadId;
@@ -202,6 +203,16 @@ class InstagramConnector
                 case 'animated_media':
                     $res['type'] = 'sticker';
                     $res['url'] = $msgData->getAnimatedMedia()->getImages()->getFixedHeight()->getUrl();
+                    break;
+                case 'media_share':
+                    $res['type'] = 'media_share';
+                    $res['publisherUserName'] = $msgData->getMediaShare()->getUser()->getUsername();
+                    $res['text'] = $msgData->getMediaShare()->getCaption()->getText();
+                    break;
+                case 'story_share':
+                    $res['type'] = 'story_share';
+                    $res['publisherUserName'] = $msgData->getStoryShare()->getMedia()->getUser()->getUsername();
+                    $res['text'] = $msgData->getStoryShare()->getText();
                     break;
                 default: 
                     $res['type'] = 'error';
