@@ -28,8 +28,8 @@ try {
     $password = $argv[2];
     $httpServerport = $argv[3];
     $urlNotif = $argv[4];
-    $debug = true;
-    $truncatedDebug = true;
+    $debug = false;
+    $truncatedDebug = false;
     //////////////////////
     
     $ig = new \InstagramAPI\Instagram($debug, $truncatedDebug);
@@ -149,7 +149,7 @@ class InstagramConnector
     
     public function onMessage($threadId, $threadItemId, DirectThreadItem $msgData){
         try {
-            //var_dump($msgData);
+           // var_dump($msgData);
             $profile = $this->getProfileData($msgData->getUserId());
             $res = [];
             $res['threadId'] =  $threadId;
@@ -222,8 +222,7 @@ class InstagramConnector
             $strJson = json_encode($res);
             $this->_logger->info($strJson);
             $this->callCURL($strJson);
-            
-            
+                    
         } catch (Exception $e) {
             $res['type'] = 'error';
             $res['text'] = 'ATENCION:\nError a recibir mensaje. Revíselo en su cuenta de Instagram o consulte a soporte@todoalojamiento.com';
@@ -232,8 +231,6 @@ class InstagramConnector
             $this->callCURL($strJson);
             $this->_logger->error((string) $e);
         }
-        
-
     }
     
     private function getProfileData($userId){
@@ -307,6 +304,7 @@ class InstagramConnector
         $command = $request->getUri()->getPath();
         // Params validation is up to you.
         $params = $request->getQueryParams();
+        
         // Log command with its params.
         $this->_logger->info(sprintf('Received command %s', $command), $params);
         switch ($command) {
@@ -319,9 +317,8 @@ class InstagramConnector
                 $context = $this->_rtc->markDirectItemSeen($params['threadId'], $params['threadItemId']);
                 return new \React\Http\Response($context !== false ? 200 : 503);
             case '/message':
-                return $this->_handleClientContext($this->_rtc->sendTextToDirect($params['threadId'], $params['text']));
-//             case '/getProfile':
-//                 return new \React\Http\Response(200, [], $this->getProfileData($params['userId']));
+                return $this->_handleClientContext($this->_rtc->sendTextToDirect($params['threadId'], $request->getParsedBody()['text']));
+               
             default:
                 $this->_logger->warning(sprintf('Unknown command %s', $command), $params);
                 // If command is unknown, reply with 404 Not Found.
