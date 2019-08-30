@@ -173,7 +173,7 @@ class InstagramConnector
             $direct = $this->_instagram->direct->getInbox();
             $threads = $direct->getInbox()->getThreads();
             foreach ($threads as $thread){
-                if (isset($threadIds[$thread->getThreadId()])){
+                if (in_array($thread->getThreadId(),$threadIds)){
                 
                     foreach ($thread->getItems() as $itemThread){
                         var_dump($itemThread);
