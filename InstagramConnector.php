@@ -170,7 +170,7 @@ class InstagramConnector
         if (count($threadIds)>0){
             $this->_instagram->direct->approvePendingThreads($threadIds);
             var_dump($threadIds);
-            sleep(2);
+            sleep(5);
             $direct = $this->_instagram->direct->getInbox();
             $threads = $direct->getInbox()->getThreads();
             foreach ($threads as $thread){
