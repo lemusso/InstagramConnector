@@ -156,16 +156,17 @@ class InstagramConnector
     }
     
     public function onTimer(){
-        //echo "timer\n";
+
         $this->_loop->addTimer(rand(30,60), [$this, 'onTimer']);
         
-        $peticiones=$this->_instagram->direct->getPendingInbox();
+        $pendingInbox=$this->_instagram->direct->getPendingInbox();
         //       var_dump($peticiones);
         //         $peticiones->getInbox()->getThreads()[0]->getThreadId();
-        $threads=$peticiones->getInbox()->getThreads();
+        $threads=$pendingInbox->getInbox()->getThreads();
         $threadIds=[];
         foreach ($threads as $thread)
             $threadIds[]=$thread->getThreadId();
+        $this->_logger->Info("Pending count: ".count($threadIds));
         if (count($threadIds)>0){
             $this->_instagram->direct->approvePendingThreads($threadIds);
             var_dump($threadIds);
