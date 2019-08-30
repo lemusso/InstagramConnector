@@ -1,6 +1,7 @@
 <?php
 
 use InstagramAPI\Response\Model\DirectThreadItem;
+use InstagramAPI\Request\Direct;
 
 /*
  * Usage:
@@ -105,6 +106,10 @@ class InstagramConnector
         if ($logger === null) {
             $logger = new \Psr\Log\NullLogger();
         }
+       
+        $this->_loop->addTimer(30, [$this, 'onTimer']);
+        
+
         $this->_httpServerport = $httpServerport;
         $this->_urlNotif = $urlNotif;
         $this->_logger = $logger;
@@ -112,7 +117,10 @@ class InstagramConnector
         $this->_rtc = new \InstagramAPI\Realtime($this->_instagram, $this->_loop, $this->_logger);
         $this->_rtc->on('error', [$this, 'onRealtimeFail']);
         $this->_rtc->on('thread-item-created', [$this, 'onMessage']);
+               
         $this->_rtc->start();
+        
+        
         $this->_startHttpServer();
     }
 
@@ -145,6 +153,36 @@ class InstagramConnector
         curl_close($ch);
         
         $this->_logger->Info($result);
+    }
+    
+    public function onTimer(){
+        //echo "timer\n";
+        $this->_loop->addTimer(rand(30,60), [$this, 'onTimer']);
+        
+        $peticiones=$this->_instagram->direct->getPendingInbox();
+        //       var_dump($peticiones);
+        //         $peticiones->getInbox()->getThreads()[0]->getThreadId();
+        $threads=$peticiones->getInbox()->getThreads();
+        $threadIds=[];
+        foreach ($threads as $thread)
+            $threadIds[]=$thread->getThreadId();
+        if (count($threadIds)>0){
+            $this->_instagram->direct->approvePendingThreads($threadIds);
+            var_dump($threadIds);
+            
+            $direct = $this->_instagram->direct->getInbox();
+            $threads = $direct->getInbox()->getThreads();
+            foreach ($threads as $thread){
+                if (isset($threadIds[$thread->getThreadId()])){
+                
+                    foreach ($thread->getItems() as $itemThread){
+                        var_dump($itemThread);
+                        $this->onMessage($thread->getThreadId(),$itemThread->getItemId(),$itemThread);
+                    }
+                }
+            }
+               
+        }
     }
     
     public function onMessage($threadId, $threadItemId, DirectThreadItem $msgData){
