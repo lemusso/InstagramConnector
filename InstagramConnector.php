@@ -254,9 +254,20 @@ class InstagramConnector
                     $res['publisherUserName'] = $msgData->getStoryShare()->getMedia()->getUser()->getUsername();
                     $res['text'] = $msgData->getStoryShare()->getText();
                     break;
+                case 'reel_share':
+                    $res['type'] = 'reel_share';
+                    $res['reel_share_type'] = $msgData->getReelShare()->getType(); //reaction, reply
+                    $res['publisherUserName'] = $msgData->getReelShare()->getMedia()->getUser()->getUsername();
+                    $res['text'] = $msgData->getReelShare()->getText();
+                    break;
+                case 'action_log':
+                    $res['type'] = 'text';
+                    $res['text'] = $msgData->getActionLog()->getDescription();
+                    break;
+                    
                 default: 
                     $res['type'] = 'error';
-                    $res['text'] = 'ATENCION:\nMensaje de clase desconocida. Revíselo en su cuenta de Instagram o consulte a soporte@todoalojamiento.com';
+                    $res['text'] = "unsuported:\n".var_export($msgData,true);
             }
                       
             $strJson = json_encode($res);
@@ -265,7 +276,7 @@ class InstagramConnector
                     
         } catch (Exception $e) {
             $res['type'] = 'error';
-            $res['text'] = 'ATENCION:\nError a recibir mensaje. Revíselo en su cuenta de Instagram o consulte a soporte@todoalojamiento.com';
+            $res['text'] = "exception:\n".var_export($msgData,true);
             $strJson = json_encode($res);
             $this->_logger->info($strJson);
             $this->callCURL($strJson);
