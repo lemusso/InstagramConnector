@@ -64,6 +64,7 @@ try {
 
         sleep(3);
         $checkApiPath = substr( $response->getChallenge()->getApiPath(), 1);
+        echo "path: ".$checkApiPath;
         $customResponse = $ig->request($checkApiPath)->setNeedsAuth(false)->addPost('choice', $verification_method)->addPost('_uuid', $ig->uuid)
         ->addPost('guid', $ig->uuid)->addPost('device_id', $ig->device_id)->addPost('_uid', $ig->account_id)->addPost('_csrftoken', $ig->client->getToken())->getDecodedResponse();
         var_dump($customResponse);
