@@ -66,6 +66,7 @@ try {
         $checkApiPath = substr( $response->getChallenge()->getApiPath(), 1);
         echo "path: ".$checkApiPath;
 
+      /**no parece aportar un cazzo ****/
         $customResponse = $ig->request(str_replace('challenge', 'challenge/reset', $checkApiPath))->setNeedsAuth(false)->addPost('_uuid', $ig->uuid)
         ->addPost('guid', $ig->uuid)->addPost('device_id', $ig->device_id)->addPost('_uid', $ig->account_id)->addPost('_csrftoken', $ig->client->getToken())->getDecodedResponse();
         var_dump($customResponse);
@@ -87,7 +88,8 @@ try {
         $code = readln( 'Inserisci il codice ricevuto via ' . ( $verification_method ? 'email' : 'sms' ) . ':' );
         $ig->changeUser($username, $password);
         
-        $customResponse = $ig->request($checkApiPath)->setNeedsAuth(false)->addPost('security_code', $code)->addPost('_uuid', $ig->uuid)->addPost('guid', $ig->uuid)->addPost('device_id', $ig->device_id)->addPost('_uid', $ig->account_id)->addPost('_csrftoken', $ig->client->getToken())->getDecodedResponse();
+        $customResponse = $ig->request($checkApiPath)->setNeedsAuth(false)->addPost('security_code', $code)->addPost('guid', $ig->uuid)
+        ->addPost('device_id', $ig->device_id)->addPost('_csrftoken', $ig->client->getToken())->getDecodedResponse();
         var_dump($customResponse);
 
     }
