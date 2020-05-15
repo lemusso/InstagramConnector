@@ -22,6 +22,19 @@ date_default_timezone_set('UTC');
 
 require __DIR__.'/vendor/autoload.php';
 
+
+$verification_method = 0; 	// 0 = SMS 1 = Email per la challange
+
+class ExtendedInstagram extends \InstagramAPI\Instagram {
+    public function changeUser($username2, $password2) {$this->_setUser( $username2, $password2 );}
+}
+
+function readln( $prompt ) { // funzione per inserire il codice di verifica
+    if ( PHP_OS === 'WINNT' ) {echo "$prompt ";return trim( (string) stream_get_line( STDIN, 6, "\n" ) );}
+    return trim( (string) readline( "$prompt " ) );
+}
+
+
 try {
         
     /////// CONFIG ///////
@@ -33,23 +46,50 @@ try {
     $truncatedDebug = false;
     //////////////////////
     
-    $ig = new \InstagramAPI\Instagram($debug, $truncatedDebug);
+    $ig = new ExtendedInstagram($debug, $truncatedDebug);
     
     $loginResponse=$ig->login($username, $password);
-    
     if ($loginResponse !== null && $loginResponse->isTwoFactorRequired()) {
         $twoFactorIdentifier = $loginResponse->getTwoFactorInfo()->getTwoFactorIdentifier();
         
-        // The "STDIN" lets you paste the code via terminal for testing.
-        // You should replace this line with the logic you want.
-        // The verification code will be sent by Instagram via SMS.
-        $verificationCode = trim(fgets(STDIN));
+        $verificationCode = readln( 'Inserisci il codice de verificación en dos pasos: ');
         $ig->finishTwoFactorLogin($username, $password, $twoFactorIdentifier, $verificationCode);
     }
-    
 } catch (\Exception $e) {
-    echo 'Something went wrong: '.$e->getMessage()."\n";
-    exit(0);
+    $response = $e->getResponse();
+    
+  //  var_dump($exception);
+    
+    if ($response->getErrorType() === 'checkpoint_challenge_required') { // effettuo la richiesta di challange
+
+        sleep(3);
+        $checkApiPath = substr( $response->getChallenge()->getApiPath(), 1);
+        $customResponse = $ig->request($checkApiPath)->setNeedsAuth(false)->addPost('choice', $verification_method)->addPost('_uuid', $ig->uuid)
+        ->addPost('guid', $ig->uuid)->addPost('device_id', $ig->device_id)->addPost('_uid', $ig->account_id)->addPost('_csrftoken', $ig->client->getToken())->getDecodedResponse();
+        var_dump($customResponse);
+    } else { // non posso risolvere il check point della challange
+        echo 'Non riesco a risolvere la pre-challange'.PHP_EOL;
+        exit();
+    }
+
+    try { // faccio inserire il codice ottenuto per verificare la challange
+//         if ($customResponse['status'] === 'ok' && $customResponse['action'] === 'close') {
+//             exit();
+//         }
+
+        $code = readln( 'Inserisci il codice ricevuto via ' . ( $verification_method ? 'email' : 'sms' ) . ':' );
+        $ig->changeUser($username, $password);
+        
+        $customResponse = $ig->request($checkApiPath)->setNeedsAuth(false)->addPost('security_code', $code)->addPost('_uuid', $ig->uuid)->addPost('guid', $ig->uuid)->addPost('device_id', $ig->device_id)->addPost('_uid', $ig->account_id)->addPost('_csrftoken', $ig->client->getToken())->getDecodedResponse();
+        var_dump($customResponse);
+
+    }
+    catch ( Exception $ex ) {
+        echo "excepcion";
+        echo $ex->getMessage();
+        var_dump($ex);
+        
+    }
 }
 
 // Create main event loop.
