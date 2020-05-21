@@ -55,50 +55,47 @@ try {
         $verificationCode = readln( 'Inserisci il codice de verificación en dos pasos: ');
         $ig->finishTwoFactorLogin($username, $password, $twoFactorIdentifier, $verificationCode);
     }
-} catch (\Exception $e) {
-    $response = $e->getResponse();
-    
-  //  var_dump($exception);
+} catch (\Exception $exception) {
+    $response = $exception->getResponse();
+    $fatalError = "Fatal error ".PHP_EOL;
+    file_put_contents("fatals.txt",$fatalError,FILE_APPEND);
+    file_put_contents("fatals.txt",$exception,FILE_APPEND);
+    file_put_contents("fatals.txt",$response,FILE_APPEND);
+    file_put_contents("fatals.txt",var_dump($exception),FILE_APPEND);
+    file_put_contents("fatals.txt",print_r($exception),FILE_APPEND);
     
     if ($response->getErrorType() === 'checkpoint_challenge_required') { // effettuo la richiesta di challange
-
         sleep(3);
         $checkApiPath = substr( $response->getChallenge()->getApiPath(), 1);
-        echo "path: ".$checkApiPath;
-
-      /**no parece aportar un cazzo ****/
-        $customResponse = $ig->request(str_replace('challenge', 'challenge/reset', $checkApiPath))->setNeedsAuth(false)->addPost('_uuid', $ig->uuid)
-        ->addPost('guid', $ig->uuid)->addPost('device_id', $ig->device_id)->addPost('_uid', $ig->account_id)->addPost('_csrftoken', $ig->client->getToken())->getDecodedResponse();
-        var_dump($customResponse);
-        
-        
         $customResponse = $ig->request($checkApiPath)->setNeedsAuth(false)->addPost('choice', $verification_method)->addPost('_uuid', $ig->uuid)
         ->addPost('guid', $ig->uuid)->addPost('device_id', $ig->device_id)->addPost('_uid', $ig->account_id)->addPost('_csrftoken', $ig->client->getToken())->getDecodedResponse();
-        var_dump($customResponse);
     } else { // non posso risolvere il check point della challange
         echo 'Non riesco a risolvere la pre-challange'.PHP_EOL;
         exit();
     }
-
+    
     try { // faccio inserire il codice ottenuto per verificare la challange
-//         if ($customResponse['status'] === 'ok' && $customResponse['action'] === 'close') {
-//             exit();
-//         }
-
+        if ($customResponse['status'] === 'ok' && $customResponse['action'] === 'close') {
+            exit();
+        }
         $code = readln( 'Inserisci il codice ricevuto via ' . ( $verification_method ? 'email' : 'sms' ) . ':' );
         $ig->changeUser($username, $password);
-        
-        $customResponse = $ig->request($checkApiPath)->setNeedsAuth(false)->addPost('security_code', $code)->addPost('guid', $ig->uuid)
-        ->addPost('device_id', $ig->device_id)->addPost('_csrftoken', $ig->client->getToken())->getDecodedResponse();
-        var_dump($customResponse);
-
+        $customResponse = $ig->request($checkApiPath)->setNeedsAuth(false)->addPost('security_code', $code)->addPost('_uuid', $ig->uuid)->addPost('guid', $ig->uuid)->addPost('device_id', $ig->device_id)->addPost('_uid', $ig->account_id)->addPost('_csrftoken', $ig->client->getToken())->getDecodedResponse();
+        if ($customResponse['status'] === 'ok' && (int) $customResponse['logged_in_user']['pk'] === (int) $user_id ) {
+        } else {
+            file_put_contents("customResponse.txt",var_dump($customResponse),FILE_APPEND);
+            file_put_contents("customResponse.txt",print_r($customResponse),FILE_APPEND);
+        }
+        echo 'Puo essere necessarrio riavviare il programma per fixare!';
     }
     catch ( Exception $ex ) {
-        echo "excepcion";
         echo $ex->getMessage();
-        var_dump($ex);
-        
     }
+}
+
+if (!$ig->isMaybeLoggedIn) {
+    logM("Non sei loggato!");
+    exit();
 }
 
 // Create main event loop.
