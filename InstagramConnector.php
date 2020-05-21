@@ -23,6 +23,12 @@ date_default_timezone_set('UTC');
 require __DIR__.'/vendor/autoload.php';
 
 
+
+\InstagramAPI\Instagram::$allowDangerousWebUsageAtMyOwnRisk = false;
+
+
+
+
 $verification_method = 0; 	// 0 = SMS 1 = Email per la challange
 
 class ExtendedInstagram extends \InstagramAPI\Instagram {
