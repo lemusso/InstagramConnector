@@ -81,10 +81,11 @@ try {
         $code = readln( 'Inserisci il codice ricevuto via ' . ( $verification_method ? 'email' : 'sms' ) . ':' );
         $ig->changeUser($username, $password);
         $customResponse = $ig->request($checkApiPath)->setNeedsAuth(false)->addPost('security_code', $code)->addPost('_uuid', $ig->uuid)->addPost('guid', $ig->uuid)->addPost('device_id', $ig->device_id)->addPost('_uid', $ig->account_id)->addPost('_csrftoken', $ig->client->getToken())->getDecodedResponse();
+        var_dump($customResponse);
         if ($customResponse['status'] === 'ok' && (int) $customResponse['logged_in_user']['pk'] === (int) $user_id ) {
         } else {
-            file_put_contents("customResponse.txt",var_dump($customResponse),FILE_APPEND);
-            file_put_contents("customResponse.txt",print_r($customResponse),FILE_APPEND);
+           // file_put_contents("customResponse.txt",var_dump($customResponse),FILE_APPEND);
+            //file_put_contents("customResponse.txt",print_r($customResponse),FILE_APPEND);
         }
         echo 'Puo essere necessarrio riavviare il programma per fixare!';
     }
@@ -94,7 +95,7 @@ try {
 }
 
 if (!$ig->isMaybeLoggedIn) {
-    logM("Non sei loggato!");
+    echo "Non sei loggato!";
     exit();
 }
 
