@@ -236,7 +236,7 @@ class InstagramConnector
                 
                 foreach ($threadIds as $threadId){
                     sleep(5);
-                    $thread= $this->_instagram->direct->getThread($threadId);
+                    $thread= $this->_instagram->direct->getThread($threadId)->getThread();
                  
                         var_dump($thread);
                         foreach ($thread->getItems() as $itemThread){
