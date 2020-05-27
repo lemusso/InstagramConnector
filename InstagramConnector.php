@@ -220,35 +220,39 @@ class InstagramConnector
     }
     
     public function onTimer(){
-
-        $this->_loop->addTimer(rand(30,60), [$this, 'onTimer']);
-        
-        $pendingInbox=$this->_instagram->direct->getPendingInbox();
-        //       var_dump($peticiones);
-        //         $peticiones->getInbox()->getThreads()[0]->getThreadId();
-        $threads=$pendingInbox->getInbox()->getThreads();
-        $threadIds=[];
-        foreach ($threads as $thread)
-            $threadIds[]=$thread->getThreadId();
-        $this->_logger->Info("Pending count: ".count($threadIds));
-        if (count($threadIds)>0){
-            $this->_instagram->direct->approvePendingThreads($threadIds);
-            var_dump($threadIds);
-            sleep(5);
-            $direct = $this->_instagram->direct->getInbox();
-            $threads = $direct->getInbox()->getThreads();
-            foreach ($threads as $thread){
-                var_dump($thread->getThreadId());
-                if (in_array($thread->getThreadId(),$threadIds)){
-                    var_dump($thread->getItems());
-                    foreach ($thread->getItems() as $itemThread){
-                        var_dump($itemThread);
-                        $this->onMessage($thread->getThreadId(),$itemThread->getItemId(),$itemThread);
-                    }
+        try{
+            $this->_loop->addTimer(rand(30,60), [$this, 'onTimer']);
+            
+            $pendingInbox=$this->_instagram->direct->getPendingInbox();
+            //       var_dump($peticiones);
+            //         $peticiones->getInbox()->getThreads()[0]->getThreadId();
+            $threads=$pendingInbox->getInbox()->getThreads();
+            $threadIds=[];
+            foreach ($threads as $thread)
+                $threadIds[]=$thread->getThreadId();
+            $this->_logger->Info("Pending count: ".count($threadIds));
+            if (count($threadIds)>0){
+                $this->_instagram->direct->approvePendingThreads($threadIds);
+                
+                foreach ($threadIds as $threadId){
+                    sleep(5);
+                    $thread= $this->_instagram->direct->getThread($threadId);
+                 
+                        var_dump($thread);
+                        foreach ($thread->getItems() as $itemThread){
+                            var_dump($itemThread);
+                            $this->onMessage($thread->getThreadId(),$itemThread->getItemId(),$itemThread);
+                        }
+                 
                 }
+                   
+    
+                
             }
-               
+        }   catch (\Throwable $e) {
+            echo 'ERROR ----> mensaje:' . $e->getMessage() . ' trace:' . $e->getTraceAsString().' Linea: '.$e->getLine().' Archivo: '.$e->getFile();
         }
+            
     }
     
     public function onMessage($threadId, $threadItemId, DirectThreadItem $msgData){
