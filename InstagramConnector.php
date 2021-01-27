@@ -48,7 +48,7 @@ try {
     $password = $argv[2];
     $httpServerport = $argv[3];
     $urlNotif = $argv[4];
-    $debug = false;
+    $debug = true;
     $truncatedDebug = false;
     //////////////////////
     
@@ -84,6 +84,8 @@ try {
         if ($customResponse['status'] === 'ok' && $customResponse['action'] === 'close') {
             exit();
         }
+        var_dump($customResponse);
+
         $code = readln( 'Inserisci il codice ricevuto via ' . ( $verification_method ? 'email' : 'sms' ) . ':' );
         $ig->changeUser($username, $password);
         $customResponse = $ig->request($checkApiPath)->setNeedsAuth(false)->addPost('security_code', $code)->addPost('_uuid', $ig->uuid)->addPost('guid', $ig->uuid)->addPost('device_id', $ig->device_id)->addPost('_uid', $ig->account_id)->addPost('_csrftoken', $ig->client->getToken())->getDecodedResponse();
@@ -103,7 +105,8 @@ try {
 if (!$ig->isMaybeLoggedIn) {
     echo "Non sei loggato!";
     exit();
-}
+}else
+    echo "logueado!";
 
 // Create main event loop.
 $loop = \React\EventLoop\Factory::create();
@@ -120,7 +123,7 @@ $loop->run();
 
 class InstagramConnector
 {
-    const HOST = '127.0.0.1';
+    const HOST ='0.0.0.0';
     
     const TIMEOUT = 5;
 
@@ -181,6 +184,9 @@ class InstagramConnector
         $this->_rtc = new \InstagramAPI\Realtime($this->_instagram, $this->_loop, $this->_logger);
         $this->_rtc->on('error', [$this, 'onRealtimeFail']);
         $this->_rtc->on('thread-item-created', [$this, 'onMessage']);
+
+
+
                
         $this->_rtc->start();
         
@@ -456,5 +462,6 @@ class InstagramConnector
         // Bind HTTP server on server socket.
         $this->_server = new \React\Http\Server([$this, 'onHttpRequest']);
         $this->_server->listen($socket);
+echo "inicio server...".sprintf('Listening on http://%s', $socket->getAddress());
     }
 }
