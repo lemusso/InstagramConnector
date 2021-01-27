@@ -50,6 +50,7 @@ try {
     $urlNotif = $argv[4];
     $debug = true;
     $truncatedDebug = false;
+
     //////////////////////
     
     $ig = new ExtendedInstagram($debug, $truncatedDebug);
@@ -63,12 +64,11 @@ try {
     }
 } catch (\Exception $exception) {
     $response = $exception->getResponse();
-    $fatalError = "Fatal error ".PHP_EOL;
-    file_put_contents("fatals.txt",$fatalError,FILE_APPEND);
-    file_put_contents("fatals.txt",$exception,FILE_APPEND);
-    file_put_contents("fatals.txt",$response,FILE_APPEND);
-    file_put_contents("fatals.txt",var_dump($exception),FILE_APPEND);
-    file_put_contents("fatals.txt",print_r($exception),FILE_APPEND);
+    echo "Fatal error ".PHP_EOL;
+    
+    echo $response;
+    var_dump($exception);
+
     
     if ($response->getErrorType() === 'checkpoint_challenge_required') { // effettuo la richiesta di challange
         sleep(3);
@@ -124,7 +124,7 @@ $loop->run();
 class InstagramConnector
 {
     const HOST ='0.0.0.0';
-    
+    private $threads=[];
     const TIMEOUT = 5;
 
     /** @var \React\Promise\Deferred[] */
@@ -185,7 +185,21 @@ class InstagramConnector
         $this->_rtc->on('error', [$this, 'onRealtimeFail']);
         $this->_rtc->on('thread-item-created', [$this, 'onMessage']);
 
-
+        $this->_rtc->on('thread-activity', function ($threadId, InstagramAPI\Realtime\Payload\ThreadActivity $thread) {
+            printf('[RTC] Thread %s has been updated%s', $threadId, PHP_EOL);
+            sleep(5);
+            $thread= $this->_instagram->direct->getThread($threadId)->getThread();
+            
+            echo "recuperados mensajes del thread";  
+            foreach ($thread->getItems() as $itemThread){
+                
+           //     var_dump($itemThread);
+                sleep(3);
+                $this->onMessage($thread->getThreadId(),$itemThread->getItemId(),$itemThread);
+            }
+            
+            
+        });
 
                
         $this->_rtc->start();
@@ -243,10 +257,10 @@ class InstagramConnector
                 foreach ($threadIds as $threadId){
                     sleep(5);
                     $thread= $this->_instagram->direct->getThread($threadId)->getThread();
-                 
-                        var_dump($thread);
+                    echo "recuperados mensajes del thread";  
+//                        var_dump($thread);
                         foreach ($thread->getItems() as $itemThread){
-                            var_dump($itemThread);
+                            sleep(3);
                             $this->onMessage($thread->getThreadId(),$itemThread->getItemId(),$itemThread);
                         }
                  
@@ -263,8 +277,24 @@ class InstagramConnector
     
     public function onMessage($threadId, $threadItemId, DirectThreadItem $msgData){
         try {
+            
+            if (!isset($this->threads[$threadId]))
+                $this->threads[$threadId]=[];
+            if (!isset($this->threads[$threadId][$threadItemId]))
+                $this->threads[$threadId][$threadItemId]=true;
+            else{
+                echo "saltando mensaje existente";
+                return;
+            }
+
+            
            // var_dump($msgData);
             $profile = $this->getProfileData($msgData->getUserId());
+
+            if ($profile['userName']==$this->_instagram->username){
+                echo "saltando mensaje propio";
+                return;
+            }
             $res = [];
             $res['threadId'] =  $threadId;
             $res['threadItemId'] = $threadItemId;
